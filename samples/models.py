@@ -2,6 +2,10 @@ from django.db import models
 from django.contrib.auth.models import User
 import uuid
 from datetime import datetime
+from barcode import Code128
+from barcode.writer import ImageWriter
+from io import BytesIO
+import base64
 
 class StorageLocation(models.Model):
     name = models.CharField(max_length=100)
@@ -54,6 +58,19 @@ class Sample(models.Model):
             else:
                 raise ValueError("Could not generate unique sample ID")
         super().save(*args, **kwargs)
+
+    def generate_barcode(self):
+        """Generate barcode for sample ID"""
+        code128 = Code128(self.sample_id, writer=ImageWriter())
+        buffer = BytesIO()
+        code128.write(buffer)
+        buffer.seek(0)
+        return buffer.getvalue()
+
+    def get_barcode_base64(self):
+        """Get barcode as base64 string for display"""
+        barcode_bytes = self.generate_barcode()
+        return base64.b64encode(barcode_bytes).decode()
     
     def __str__(self):
         return f"{self.sample_id} - {self.name}"
