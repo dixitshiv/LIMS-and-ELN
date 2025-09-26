@@ -1,21 +1,33 @@
 from rest_framework import viewsets
 from rest_framework.permissions import IsAuthenticated
-from .models import Sample, StorageLocation
-from .serializers import SampleSerializer, StorageLocationSerializer
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404
 from rest_framework.decorators import action
 from rest_framework.response import Response
+from django_filters.rest_framework import DjangoFilterBackend
+from rest_framework import filters
+from .models import Sample, StorageLocation
+from .serializers import SampleSerializer, StorageLocationSerializer
 
 class StorageLocationViewSet(viewsets.ModelViewSet):
     queryset = StorageLocation.objects.all()
     serializer_class = StorageLocationSerializer
     permission_classes = [IsAuthenticated]
+    filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
+    filterset_fields = ['location_type']
+    search_fields = ['name', 'location_type', 'description']
+    ordering_fields = ['name', 'created_at']
+    ordering = ['name']
 
 class SampleViewSet(viewsets.ModelViewSet):
     queryset = Sample.objects.all()
     serializer_class = SampleSerializer
     permission_classes = [IsAuthenticated]
+    filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
+    filterset_fields = ['sample_type', 'storage_location', 'created_by']
+    search_fields = ['sample_id', 'name', 'sample_type']
+    ordering_fields = ['created_at', 'sample_id', 'name', 'updated_at']
+    ordering = ['-created_at']
     
     def perform_create(self, serializer):
         serializer.save(created_by=self.request.user)
