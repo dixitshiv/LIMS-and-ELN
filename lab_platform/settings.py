@@ -43,6 +43,7 @@ INSTALLED_APPS = [
     'core',
     'samples',
     'experiments',
+    'dashboard',
 ]
 
 MIDDLEWARE = [
