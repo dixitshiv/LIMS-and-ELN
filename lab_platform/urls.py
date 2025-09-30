@@ -1,10 +1,15 @@
 from django.contrib import admin
 from django.urls import path, include
+from dashboard import views as dashboard_views
 
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('api/', include('samples.urls')),
     path('api/', include('experiments.urls')),
-    path('api/dashboard/', include('dashboard.urls')), 
+    path('api/dashboard/stats/', dashboard_views.dashboard_stats),
+    path('api/dashboard/storage/', dashboard_views.storage_utilization),
+    path('api/dashboard/activity/', dashboard_views.recent_activity),
+    path('api/dashboard/analytics/', dashboard_views.sample_analytics),
+    path('dashboard/', include('dashboard.urls')),
     path('api-auth/', include('rest_framework.urls')),
 ]

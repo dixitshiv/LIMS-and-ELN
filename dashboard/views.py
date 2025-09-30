@@ -6,6 +6,8 @@ from django.utils import timezone
 from datetime import datetime, timedelta
 from samples.models import Sample, StorageLocation
 from experiments.models import Experiment
+from django.shortcuts import render
+from django.contrib.auth.decorators import login_required
 
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
@@ -136,3 +138,17 @@ def sample_analytics(request):
         'top_sample_types': list(top_sample_types),
         'top_creators': list(top_creators)
     })
+@login_required
+def dashboard_home(request):
+    """Render the main dashboard page"""
+    return render(request, 'dashboard/home.html')
+
+@login_required
+def dashboard_samples(request):
+    """Render the samples overview page"""
+    return render(request, 'dashboard/samples.html')
+
+@login_required
+def dashboard_storage(request):
+    """Render the storage utilization page"""
+    return render(request, 'dashboard/storage.html')

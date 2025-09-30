@@ -1,0 +1,102 @@
+{% extends 'dashboard/base.html' %}
+
+{% block title %}Dashboard Overview - LIMS{% endblock %}
+
+{% block content %}
+<div class="card">
+    <h2>Laboratory Overview</h2>
+    
+    <div class="stats-grid">
+        <div class="stat-card" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
+            <h3>Total Samples</h3>
+            <div class="number" id="total-samples">0</div>
+        </div>
+        
+        <div class="stat-card" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);">
+            <h3>Storage Locations</h3>
+            <div class="number" id="total-storage">0</div>
+        </div>
+        
+        <div class="stat-card" style="background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);">
+            <h3>Total Experiments</h3>
+            <div class="number" id="total-experiments">0</div>
+        </div>
+        
+        <div class="stat-card" style="background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);">
+            <h3>Samples This Week</h3>
+            <div class="number" id="recent-samples">0</div>
+        </div>
+    </div>
+</div>
+
+<div class="card">
+    <h2>Samples by Type</h2>
+    <table id="samples-by-type">
+        <thead>
+            <tr>
+                <th>Sample Type</th>
+                <th>Count</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td colspan="2">Loading...</td>
+            </tr>
+        </tbody>
+    </table>
+</div>
+
+<div class="card">
+    <h2>Samples by Storage Location</h2>
+    <table id="samples-by-location">
+        <thead>
+            <tr>
+                <th>Location</th>
+                <th>Sample Count</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td colspan="2">Loading...</td>
+            </tr>
+        </tbody>
+    </table>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Fetch dashboard statistics
+    fetch('/api/dashboard/stats/', {
+    credentials: 'same-origin'
+}).then(response => response.json())
+        .then(data => {
+            // Update overview cards
+            document.getElementById('total-samples').textContent = data.overview.total_samples;
+            document.getElementById('total-storage').textContent = data.overview.total_storage_locations;
+            document.getElementById('total-experiments').textContent = data.overview.total_experiments;
+            document.getElementById('recent-samples').textContent = data.recent_activity.samples_last_7_days;
+            
+            // Update samples by type table
+            const typeTable = document.getElementById('samples-by-type').getElementsByTagName('tbody')[0];
+            typeTable.innerHTML = '';
+            data.samples_by_type.forEach(item => {
+                const row = typeTable.insertRow();
+                row.insertCell(0).textContent = item.sample_type || 'Unknown';
+                row.insertCell(1).textContent = item.count;
+            });
+            
+            // Update samples by location table
+            const locationTable = document.getElementById('samples-by-location').getElementsByTagName('tbody')[0];
+            locationTable.innerHTML = '';
+            data.samples_by_location.forEach(item => {
+                const row = locationTable.insertRow();
+                row.insertCell(0).textContent = item.storage_location__name || 'Unassigned';
+                row.insertCell(1).textContent = item.count;
+            });
+        })
+        .catch(error => {
+            console.error('Error fetching dashboard data:', error);
+        });
+</script>
+{% endblock %}
