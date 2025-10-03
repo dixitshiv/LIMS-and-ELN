@@ -30,73 +30,218 @@
 </div>
 
 <div class="card">
+    <h2>Sample Creation Trend (Last 30 Days)</h2>
+    <div style="max-width: 900px; margin: 0 auto;">
+        <canvas id="trendChart"></canvas>
+    </div>
+</div>
+
+<div class="card">
     <h2>Samples by Type</h2>
-    <table id="samples-by-type">
-        <thead>
-            <tr>
-                <th>Sample Type</th>
-                <th>Count</th>
-            </tr>
-        </thead>
-        <tbody>
-            <tr>
-                <td colspan="2">Loading...</td>
-            </tr>
-        </tbody>
-    </table>
+    <div style="max-width: 800px; margin: 0 auto;">
+        <canvas id="sampleTypeChart"></canvas>
+    </div>
 </div>
 
 <div class="card">
     <h2>Samples by Storage Location</h2>
-    <table id="samples-by-location">
-        <thead>
-            <tr>
-                <th>Location</th>
-                <th>Sample Count</th>
-            </tr>
-        </thead>
-        <tbody>
-            <tr>
-                <td colspan="2">Loading...</td>
-            </tr>
-        </tbody>
-    </table>
+    <div style="max-width: 600px; margin: 0 auto;">
+        <canvas id="storageLocationChart"></canvas>
+    </div>
 </div>
 {% endblock %}
 
 {% block extra_js %}
 <script>
     // Fetch dashboard statistics
-    fetch('/api/dashboard/stats/', {
-    credentials: 'same-origin'
-}).then(response => response.json())
-        .then(data => {
-            // Update overview cards
-            document.getElementById('total-samples').textContent = data.overview.total_samples;
-            document.getElementById('total-storage').textContent = data.overview.total_storage_locations;
-            document.getElementById('total-experiments').textContent = data.overview.total_experiments;
-            document.getElementById('recent-samples').textContent = data.recent_activity.samples_last_7_days;
-            
-            // Update samples by type table
-            const typeTable = document.getElementById('samples-by-type').getElementsByTagName('tbody')[0];
-            typeTable.innerHTML = '';
-            data.samples_by_type.forEach(item => {
-                const row = typeTable.insertRow();
-                row.insertCell(0).textContent = item.sample_type || 'Unknown';
-                row.insertCell(1).textContent = item.count;
-            });
-            
-            // Update samples by location table
-            const locationTable = document.getElementById('samples-by-location').getElementsByTagName('tbody')[0];
-            locationTable.innerHTML = '';
-            data.samples_by_location.forEach(item => {
-                const row = locationTable.insertRow();
-                row.insertCell(0).textContent = item.storage_location__name || 'Unassigned';
-                row.insertCell(1).textContent = item.count;
-            });
-        })
-        .catch(error => {
-            console.error('Error fetching dashboard data:', error);
+    Promise.all([
+        fetch('/api/dashboard/stats/', { credentials: 'same-origin' }).then(r => r.json()),
+        fetch('/api/dashboard/analytics/', { credentials: 'same-origin' }).then(r => r.json())
+    ])
+    .then(([statsData, analyticsData]) => {
+        // Update overview cards
+        document.getElementById('total-samples').textContent = statsData.overview.total_samples;
+        document.getElementById('total-storage').textContent = statsData.overview.total_storage_locations;
+        document.getElementById('total-experiments').textContent = statsData.overview.total_experiments;
+        document.getElementById('recent-samples').textContent = statsData.recent_activity.samples_last_7_days;
+        
+        // Create trend line chart
+        const trendLabels = analyticsData.daily_creation_trend.map(item => {
+            const date = new Date(item.day);
+            return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
         });
+        const trendCounts = analyticsData.daily_creation_trend.map(item => item.count);
+        
+        const ctxTrend = document.getElementById('trendChart').getContext('2d');
+        new Chart(ctxTrend, {
+            type: 'line',
+            data: {
+                labels: trendLabels,
+                datasets: [{
+                    label: 'Samples Created',
+                    data: trendCounts,
+                    borderColor: 'rgba(102, 126, 234, 1)',
+                    backgroundColor: 'rgba(102, 126, 234, 0.1)',
+                    tension: 0.4,
+                    fill: true,
+                    borderWidth: 3,
+                    pointRadius: 4,
+                    pointBackgroundColor: 'rgba(102, 126, 234, 1)',
+                    pointBorderColor: '#fff',
+                    pointBorderWidth: 2,
+                    pointHoverRadius: 6
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: true,
+                plugins: {
+                    legend: {
+                        display: false
+                    },
+                    tooltip: {
+                        mode: 'index',
+                        intersect: false,
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: {
+                            stepSize: 1
+                        }
+                    },
+                    x: {
+                        ticks: {
+                            maxRotation: 45,
+                            minRotation: 45
+                        }
+                    }
+                }
+            }
+        });
+        
+        // Create samples by type chart (Bar Chart)
+        const typeLabels = statsData.samples_by_type.map(item => item.sample_type || 'Unknown');
+        const typeCounts = statsData.samples_by_type.map(item => item.count);
+        
+        const ctx1 = document.getElementById('sampleTypeChart').getContext('2d');
+        new Chart(ctx1, {
+            type: 'bar',
+            data: {
+                labels: typeLabels,
+                datasets: [{
+                    label: 'Number of Samples',
+                    data: typeCounts,
+                    backgroundColor: [
+                        'rgba(102, 126, 234, 0.8)',
+                        'rgba(118, 75, 162, 0.8)',
+                        'rgba(240, 147, 251, 0.8)',
+                        'rgba(245, 87, 108, 0.8)',
+                        'rgba(79, 172, 254, 0.8)',
+                        'rgba(0, 242, 254, 0.8)',
+                        'rgba(67, 233, 123, 0.8)',
+                    ],
+                    borderColor: [
+                        'rgba(102, 126, 234, 1)',
+                        'rgba(118, 75, 162, 1)',
+                        'rgba(240, 147, 251, 1)',
+                        'rgba(245, 87, 108, 1)',
+                        'rgba(79, 172, 254, 1)',
+                        'rgba(0, 242, 254, 1)',
+                        'rgba(67, 233, 123, 1)',
+                    ],
+                    borderWidth: 2
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: true,
+                plugins: {
+                    legend: {
+                        display: false
+                    },
+                    title: {
+                        display: false
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: {
+                            stepSize: 1
+                        }
+                    }
+                }
+            }
+        });
+        
+        // Create samples by location chart (Pie Chart)
+        const locationLabels = statsData.samples_by_location.map(item => item.storage_location__name || 'Unassigned');
+        const locationCounts = statsData.samples_by_location.map(item => item.count);
+        
+        const ctx2 = document.getElementById('storageLocationChart').getContext('2d');
+        new Chart(ctx2, {
+            type: 'pie',
+            data: {
+                labels: locationLabels,
+                datasets: [{
+                    label: 'Samples',
+                    data: locationCounts,
+                    backgroundColor: [
+                        'rgba(102, 126, 234, 0.8)',
+                        'rgba(118, 75, 162, 0.8)',
+                        'rgba(240, 147, 251, 0.8)',
+                        'rgba(245, 87, 108, 0.8)',
+                        'rgba(79, 172, 254, 0.8)',
+                        'rgba(0, 242, 254, 0.8)',
+                        'rgba(67, 233, 123, 0.8)',
+                        'rgba(250, 208, 44, 0.8)',
+                    ],
+                    borderColor: [
+                        'rgba(102, 126, 234, 1)',
+                        'rgba(118, 75, 162, 1)',
+                        'rgba(240, 147, 251, 1)',
+                        'rgba(245, 87, 108, 1)',
+                        'rgba(79, 172, 254, 1)',
+                        'rgba(0, 242, 254, 1)',
+                        'rgba(67, 233, 123, 1)',
+                        'rgba(250, 208, 44, 1)',
+                    ],
+                    borderWidth: 2
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: true,
+                plugins: {
+                    legend: {
+                        position: 'right',
+                        labels: {
+                            padding: 15,
+                            font: {
+                                size: 12
+                            }
+                        }
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                let label = context.label || '';
+                                if (label) {
+                                    label += ': ';
+                                }
+                                label += context.parsed + ' samples';
+                                return label;
+                            }
+                        }
+                    }
+                }
+            }
+        });
+    })
+    .catch(error => {
+        console.error('Error fetching dashboard data:', error);
+    });
 </script>
 {% endblock %}
