@@ -1,0 +1,87 @@
+{% extends 'dashboard/base.html' %}
+
+{% block title %}Storage Utilization - LIMS{% endblock %}
+
+{% block content %}
+<div class="card">
+    <h2>Storage Location Overview</h2>
+    
+    <table id="storage-table">
+        <thead>
+            <tr>
+                <th>Location Name</th>
+                <th>Type</th>
+                <th>Temperature</th>
+                <th>Sample Count</th>
+                <th>Description</th>
+            </tr>
+        </thead>
+        <tbody id="storage-tbody">
+            <tr>
+                <td colspan="5" style="text-align: center;">Loading storage locations...</td>
+            </tr>
+        </tbody>
+    </table>
+</div>
+
+<div class="card">
+    <h2>Storage Utilization Statistics</h2>
+    <div class="stats-grid">
+        <div class="stat-card" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
+            <h3>Total Locations</h3>
+            <div class="number" id="total-locations">0</div>
+        </div>
+        
+        <div class="stat-card" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);">
+            <h3>Occupied Locations</h3>
+            <div class="number" id="occupied-locations">0</div>
+        </div>
+        
+        <div class="stat-card" style="background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);">
+            <h3>Empty Locations</h3>
+            <div class="number" id="empty-locations">0</div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    fetch('/api/dashboard/storage/')
+        .then(response => response.json())
+        .then(data => {
+            const tbody = document.getElementById('storage-tbody');
+            tbody.innerHTML = '';
+            
+            let totalLocations = 0;
+            let occupiedLocations = 0;
+            
+            if (data.storage_locations && data.storage_locations.length > 0) {
+                totalLocations = data.storage_locations.length;
+                
+                data.storage_locations.forEach(location => {
+                    const row = tbody.insertRow();
+                    row.insertCell(0).textContent = location.name;
+                    row.insertCell(1).textContent = location.location_type || 'N/A';
+                    row.insertCell(2).textContent = location.temperature || 'N/A';
+                    row.insertCell(3).textContent = location.sample_count || 0;
+                    row.insertCell(4).textContent = location.description || 'No description';
+                    
+                    if (location.sample_count > 0) {
+                        occupiedLocations++;
+                    }
+                });
+                
+                document.getElementById('total-locations').textContent = totalLocations;
+                document.getElementById('occupied-locations').textContent = occupiedLocations;
+                document.getElementById('empty-locations').textContent = totalLocations - occupiedLocations;
+            } else {
+                tbody.innerHTML = '<tr><td colspan="5" style="text-align: center;">No storage locations found</td></tr>';
+            }
+        })
+        .catch(error => {
+            console.error('Error loading storage data:', error);
+            document.getElementById('storage-tbody').innerHTML = '<tr><td colspan="5" style="text-align: center; color: red;">Error loading storage locations</td></tr>';
+        });
+</script>
+{% endblock %}

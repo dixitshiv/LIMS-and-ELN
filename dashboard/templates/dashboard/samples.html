@@ -1,0 +1,118 @@
+{% extends 'dashboard/base.html' %}
+
+{% block title %}Samples - LIMS{% endblock %}
+
+{% block content %}
+<div class="card">
+    <h2>Sample Management</h2>
+    
+    <div style="margin-bottom: 1rem;">
+        <input type="text" id="search-input" placeholder="Search samples..." style="padding: 0.5rem; width: 300px; border: 1px solid #ddd; border-radius: 4px;">
+        <button onclick="searchSamples()" style="padding: 0.5rem 1rem; background: #2c3e50; color: white; border: none; border-radius: 4px; cursor: pointer; margin-left: 0.5rem;">Search</button>
+    </div>
+    
+    <table id="samples-table">
+        <thead>
+            <tr>
+                <th>Sample ID</th>
+                <th>Name</th>
+                <th>Type</th>
+                <th>Quantity</th>
+                <th>Storage Location</th>
+                <th>Created By</th>
+                <th>Created Date</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody id="samples-tbody">
+            <tr>
+                <td colspan="8" style="text-align: center;">Loading samples...</td>
+            </tr>
+        </tbody>
+    </table>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    function loadSamples() {
+        fetch('/api/samples/')
+            .then(response => response.json())
+            .then(data => {
+                const tbody = document.getElementById('samples-tbody');
+                tbody.innerHTML = '';
+                
+                if (data.results && data.results.length > 0) {
+                    data.results.forEach(sample => {
+                        const row = tbody.insertRow();
+                        row.insertCell(0).textContent = sample.sample_id;
+                        row.insertCell(1).textContent = sample.name;
+                        row.insertCell(2).textContent = sample.sample_type;
+                        row.insertCell(3).textContent = sample.quantity + ' ' + sample.unit;
+                        row.insertCell(4).textContent = sample.storage_location?.name || 'Unassigned';
+                        row.insertCell(5).textContent = sample.created_by_name || 'Unknown';
+                        row.insertCell(6).textContent = new Date(sample.created_at).toLocaleDateString();
+                        
+                        const actionsCell = row.insertCell(7);
+                        actionsCell.innerHTML = `
+                            <a href="/api/samples/${sample.id}/barcode/" target="_blank" style="color: #2c3e50; text-decoration: none; margin-right: 0.5rem;">Barcode</a>
+                            <a href="/admin/samples/sample/${sample.id}/change/" style="color: #2c3e50; text-decoration: none;">Edit</a>
+                        `;
+                    });
+                } else {
+                    tbody.innerHTML = '<tr><td colspan="8" style="text-align: center;">No samples found</td></tr>';
+                }
+            })
+            .catch(error => {
+                console.error('Error loading samples:', error);
+                document.getElementById('samples-tbody').innerHTML = '<tr><td colspan="8" style="text-align: center; color: red;">Error loading samples</td></tr>';
+            });
+    }
+    
+    function searchSamples() {
+        const searchTerm = document.getElementById('search-input').value;
+        const url = searchTerm ? `/api/samples/?search=${searchTerm}` : '/api/samples/';
+        
+        fetch(url)
+            .then(response => response.json())
+            .then(data => {
+                const tbody = document.getElementById('samples-tbody');
+                tbody.innerHTML = '';
+                
+                if (data.results && data.results.length > 0) {
+                    data.results.forEach(sample => {
+                        const row = tbody.insertRow();
+                        row.insertCell(0).textContent = sample.sample_id;
+                        row.insertCell(1).textContent = sample.name;
+                        row.insertCell(2).textContent = sample.sample_type;
+                        row.insertCell(3).textContent = sample.quantity + ' ' + sample.unit;
+                        row.insertCell(4).textContent = sample.storage_location?.name || 'Unassigned';
+                        row.insertCell(5).textContent = sample.created_by_name || 'Unknown';
+                        row.insertCell(6).textContent = new Date(sample.created_at).toLocaleDateString();
+                        
+                        const actionsCell = row.insertCell(7);
+                        actionsCell.innerHTML = `
+                            <a href="/api/samples/${sample.id}/barcode/" target="_blank" style="color: #2c3e50; text-decoration: none; margin-right: 0.5rem;">Barcode</a>
+                            <a href="/admin/samples/sample/${sample.id}/change/" style="color: #2c3e50; text-decoration: none;">Edit</a>
+                        `;
+                    });
+                } else {
+                    tbody.innerHTML = '<tr><td colspan="8" style="text-align: center;">No samples found</td></tr>';
+                }
+            })
+            .catch(error => {
+                console.error('Error searching samples:', error);
+            });
+    }
+    
+    // Load samples when page loads
+    loadSamples();
+    
+    // Allow Enter key to trigger search
+    document.getElementById('search-input').addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') {
+            searchSamples();
+        }
+    });
+</script>
+{% endblock %}
