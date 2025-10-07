@@ -72,5 +72,78 @@ class Sample(models.Model):
         barcode_bytes = self.generate_barcode()
         return base64.b64encode(barcode_bytes).decode()
     
+    def record_quantity_change(self, change_type, quantity_change, changed_by, reason=''):
+        """
+        Record a quantity change and update the sample quantity
+        
+        Args:
+            change_type: One of the CHANGE_TYPES choices from QuantityLog
+            quantity_change: The amount to add (positive) or subtract (negative)
+            changed_by: User object who made the change
+            reason: Optional reason for the change
+        """
+        from decimal import Decimal
+        
+        # Calculate new quantity
+        new_quantity = self.quantity + Decimal(str(quantity_change))
+        
+        # Validate that quantity doesn't go negative
+        if new_quantity < 0:
+            raise ValueError(f"Cannot reduce quantity below zero. Current: {self.quantity}, Change: {quantity_change}")
+        
+        # Update sample quantity
+        self.quantity = new_quantity
+        self.save()
+        
+        # Create log entry
+        QuantityLog.objects.create(
+            sample=self,
+            change_type=change_type,
+            quantity_change=quantity_change,
+            quantity_after=new_quantity,
+            reason=reason,
+            changed_by=changed_by
+        )
+        
+        return self.quantity
+    
+    def use_quantity(self, amount, changed_by, reason=''):
+        """Helper method to record sample usage (decreases quantity)"""
+        from decimal import Decimal
+        return self.record_quantity_change('USE', -Decimal(str(amount)), changed_by, reason)
+    
+    def add_quantity(self, amount, changed_by, reason=''):
+        """Helper method to add quantity to sample"""
+        from decimal import Decimal
+        return self.record_quantity_change('ADD', Decimal(str(amount)), changed_by, reason)
+    
+    def adjust_quantity(self, amount, changed_by, reason=''):
+        """Helper method for manual quantity adjustments"""
+        from decimal import Decimal
+        return self.record_quantity_change('ADJUST', Decimal(str(amount)), changed_by, reason)
+
     def __str__(self):
         return f"{self.sample_id} - {self.name}"
+
+class QuantityLog(models.Model):
+    CHANGE_TYPES = [
+        ('USE', 'Used in experiment'),
+        ('ADD', 'Quantity added'),
+        ('ADJUST', 'Manual adjustment'),
+        ('SPLIT', 'Split into aliquots'),
+        ('DISPOSE', 'Disposed'),
+    ]
+    
+    sample = models.ForeignKey(Sample, on_delete=models.CASCADE, related_name='quantity_logs')
+    change_type = models.CharField(max_length=10, choices=CHANGE_TYPES)
+    quantity_change = models.DecimalField(max_digits=10, decimal_places=3)  # Positive or negative
+    quantity_after = models.DecimalField(max_digits=10, decimal_places=3)  # Quantity after change
+    reason = models.TextField(blank=True)
+    changed_by = models.ForeignKey(User, on_delete=models.CASCADE)
+    changed_at = models.DateTimeField(auto_now_add=True)
+    
+    class Meta:
+        ordering = ['-changed_at']
+    
+    def __str__(self):
+        return f"{self.sample.sample_id} - {self.change_type} - {self.quantity_change} {self.sample.unit}"

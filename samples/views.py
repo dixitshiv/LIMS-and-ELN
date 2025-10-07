@@ -51,3 +51,77 @@ class SampleViewSet(viewsets.ModelViewSet):
             'sample_id': sample.sample_id,
             'barcode': f'data:image/png;base64,{barcode_base64}'
         })
+    
+    @action(detail=True, methods=['post'])
+    def use_quantity(self, request, pk=None):
+        """Use/consume quantity from sample"""
+        sample = self.get_object()
+        amount = request.data.get('amount')
+        reason = request.data.get('reason', '')
+        
+        if not amount:
+            return Response({'error': 'Amount is required'}, status=400)
+        
+        try:
+            new_quantity = sample.use_quantity(amount, request.user, reason)
+            return Response({
+                'message': 'Quantity used successfully',
+                'new_quantity': new_quantity,
+                'sample_id': sample.sample_id
+            })
+        except ValueError as e:
+            return Response({'error': str(e)}, status=400)
+    
+    @action(detail=True, methods=['post'])
+    def add_quantity(self, request, pk=None):
+        """Add quantity to sample"""
+        sample = self.get_object()
+        amount = request.data.get('amount')
+        reason = request.data.get('reason', '')
+        
+        if not amount:
+            return Response({'error': 'Amount is required'}, status=400)
+        
+        try:
+            new_quantity = sample.add_quantity(amount, request.user, reason)
+            return Response({
+                'message': 'Quantity added successfully',
+                'new_quantity': new_quantity,
+                'sample_id': sample.sample_id
+            })
+        except ValueError as e:
+            return Response({'error': str(e)}, status=400)
+    
+    @action(detail=True, methods=['post'])
+    def adjust_quantity(self, request, pk=None):
+        """Manually adjust sample quantity"""
+        sample = self.get_object()
+        amount = request.data.get('amount')
+        reason = request.data.get('reason', '')
+        
+        if not amount:
+            return Response({'error': 'Amount is required'}, status=400)
+        
+        try:
+            new_quantity = sample.adjust_quantity(amount, request.user, reason)
+            return Response({
+                'message': 'Quantity adjusted successfully',
+                'new_quantity': new_quantity,
+                'sample_id': sample.sample_id
+            })
+        except ValueError as e:
+            return Response({'error': str(e)}, status=400)
+    
+    @action(detail=True, methods=['get'])
+    def quantity_history(self, request, pk=None):
+        """Get quantity change history for a sample"""
+        from .serializers import QuantityLogSerializer
+        sample = self.get_object()
+        logs = sample.quantity_logs.all()
+        serializer = QuantityLogSerializer(logs, many=True)
+        return Response({
+            'sample_id': sample.sample_id,
+            'current_quantity': sample.quantity,
+            'unit': sample.unit,
+            'history': serializer.data
+        })
