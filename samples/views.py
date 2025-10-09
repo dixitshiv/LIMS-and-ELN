@@ -125,3 +125,130 @@ class SampleViewSet(viewsets.ModelViewSet):
             'unit': sample.unit,
             'history': serializer.data
         })
+    
+    @action(detail=False, methods=['get'])
+    def alerts(self, request):
+        """Get all samples with active alerts"""
+        samples = Sample.objects.all()
+        
+        alerts_data = {
+            'critical': [],
+            'warning': [],
+            'summary': {
+                'expired': 0,
+                'expiring_soon': 0,
+                'low_quantity': 0,
+                'out_of_stock': 0,
+                'total_alerts': 0
+            }
+        }
+        
+        for sample in samples:
+            sample_alerts = sample.get_alert_status()
+            
+            if sample_alerts:
+                sample_data = {
+                    'id': str(sample.id),
+                    'sample_id': sample.sample_id,
+                    'name': sample.name,
+                    'sample_type': sample.sample_type,
+                    'quantity': float(sample.quantity),
+                    'unit': sample.unit,
+                    'storage_location': sample.storage_location.name if sample.storage_location else None,
+                    'alerts': sample_alerts
+                }
+                
+                # Categorize by severity
+                has_critical = any(alert['severity'] == 'critical' for alert in sample_alerts)
+                if has_critical:
+                    alerts_data['critical'].append(sample_data)
+                else:
+                    alerts_data['warning'].append(sample_data)
+                
+                # Update summary counts
+                for alert in sample_alerts:
+                    if alert['type'] == 'EXPIRED':
+                        alerts_data['summary']['expired'] += 1
+                    elif alert['type'] == 'EXPIRING_SOON':
+                        alerts_data['summary']['expiring_soon'] += 1
+                    elif alert['type'] == 'LOW_QUANTITY':
+                        alerts_data['summary']['low_quantity'] += 1
+                    elif alert['type'] == 'OUT_OF_STOCK':
+                        alerts_data['summary']['out_of_stock'] += 1
+                
+                alerts_data['summary']['total_alerts'] += len(sample_alerts)
+        
+        return Response(alerts_data)
+    
+    @action(detail=False, methods=['get'])
+    def low_stock(self, request):
+        """Get samples with low quantity"""
+        samples = Sample.objects.all()
+        low_stock_samples = []
+        
+        for sample in samples:
+            if sample.is_low_quantity():
+                low_stock_samples.append({
+                    'id': str(sample.id),
+                    'sample_id': sample.sample_id,
+                    'name': sample.name,
+                    'sample_type': sample.sample_type,
+                    'quantity': float(sample.quantity),
+                    'min_quantity': float(sample.min_quantity) if sample.min_quantity else None,
+                    'unit': sample.unit,
+                    'storage_location': sample.storage_location.name if sample.storage_location else None
+                })
+        
+        return Response({
+            'count': len(low_stock_samples),
+            'samples': low_stock_samples
+        })
+    
+    @action(detail=False, methods=['get'])
+    def expired(self, request):
+        """Get expired samples"""
+        samples = Sample.objects.all()
+        expired_samples = []
+        
+        for sample in samples:
+            if sample.is_expired():
+                expired_samples.append({
+                    'id': str(sample.id),
+                    'sample_id': sample.sample_id,
+                    'name': sample.name,
+                    'sample_type': sample.sample_type,
+                    'expiration_date': sample.expiration_date,
+                    'storage_location': sample.storage_location.name if sample.storage_location else None
+                })
+        
+        return Response({
+            'count': len(expired_samples),
+            'samples': expired_samples
+        })
+    
+    @action(detail=False, methods=['get'])
+    def expiring_soon(self, request):
+        """Get samples expiring within specified days (default 30)"""
+        days = int(request.query_params.get('days', 30))
+        samples = Sample.objects.all()
+        expiring_samples = []
+        
+        for sample in samples:
+            if sample.is_expiring_soon(days=days):
+                from datetime import datetime
+                days_until = (sample.expiration_date - datetime.now().date()).days
+                expiring_samples.append({
+                    'id': str(sample.id),
+                    'sample_id': sample.sample_id,
+                    'name': sample.name,
+                    'sample_type': sample.sample_type,
+                    'expiration_date': sample.expiration_date,
+                    'days_until_expiration': days_until,
+                    'storage_location': sample.storage_location.name if sample.storage_location else None
+                })
+        
+        return Response({
+            'count': len(expiring_samples),
+            'days_threshold': days,
+            'samples': expiring_samples
+        })

@@ -152,3 +152,8 @@ def dashboard_samples(request):
 def dashboard_storage(request):
     """Render the storage utilization page"""
     return render(request, 'dashboard/storage.html')
+
+@login_required
+def dashboard_alerts(request):
+    """Render the alerts page"""
+    return render(request, 'dashboard/alerts.html')

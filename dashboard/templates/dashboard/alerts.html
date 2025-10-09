@@ -1,0 +1,340 @@
+{% extends 'dashboard/base.html' %}
+
+{% block title %}Alerts & Notifications - LIMS{% endblock %}
+
+{% block extra_css %}
+<style>
+    .alert-summary {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 1rem;
+        margin-bottom: 2rem;
+    }
+    
+    .alert-summary-card {
+        padding: 1.5rem;
+        border-radius: 8px;
+        color: white;
+        text-align: center;
+    }
+    
+    .alert-summary-card h3 {
+        font-size: 0.9rem;
+        opacity: 0.9;
+        margin-bottom: 0.5rem;
+    }
+    
+    .alert-summary-card .number {
+        font-size: 2.5rem;
+        font-weight: bold;
+    }
+    
+    .alert-badge {
+        display: inline-block;
+        padding: 0.25rem 0.75rem;
+        border-radius: 12px;
+        font-size: 0.85rem;
+        font-weight: 600;
+        margin-right: 0.5rem;
+    }
+    
+    .alert-badge.critical {
+        background-color: #fee;
+        color: #c00;
+    }
+    
+    .alert-badge.warning {
+        background-color: #fff3cd;
+        color: #856404;
+    }
+    
+    .sample-row {
+        border-left: 4px solid transparent;
+        transition: all 0.2s;
+    }
+    
+    .sample-row.critical {
+        border-left-color: #dc3545;
+    }
+    
+    .sample-row.warning {
+        border-left-color: #ffc107;
+    }
+    
+    .sample-row:hover {
+        background-color: #f8f9fa;
+        transform: translateX(2px);
+    }
+    
+    .alert-message {
+        margin: 0.25rem 0;
+        font-size: 0.9rem;
+    }
+    
+    .no-alerts {
+        text-align: center;
+        padding: 3rem;
+        color: #28a745;
+    }
+    
+    .no-alerts-icon {
+        font-size: 4rem;
+        margin-bottom: 1rem;
+    }
+    
+    .tabs {
+        display: flex;
+        gap: 0.5rem;
+        margin-bottom: 1.5rem;
+        border-bottom: 2px solid #e0e0e0;
+    }
+    
+    .tab {
+        padding: 0.75rem 1.5rem;
+        background: none;
+        border: none;
+        cursor: pointer;
+        font-size: 1rem;
+        color: #666;
+        border-bottom: 3px solid transparent;
+        transition: all 0.3s;
+    }
+    
+    .tab:hover {
+        color: #2c3e50;
+    }
+    
+    .tab.active {
+        color: #2c3e50;
+        border-bottom-color: #667eea;
+        font-weight: 600;
+    }
+    
+    .tab-content {
+        display: none;
+    }
+    
+    .tab-content.active {
+        display: block;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="card">
+    <h2>Alert Summary</h2>
+    <div class="alert-summary" id="alert-summary">
+        <div class="alert-summary-card" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);">
+            <h3>Total Alerts</h3>
+            <div class="number" id="total-alerts">0</div>
+        </div>
+        
+        <div class="alert-summary-card" style="background: linear-gradient(135deg, #ff6b6b 0%, #ee5a6f 100%);">
+            <h3>Expired Samples</h3>
+            <div class="number" id="expired-count">0</div>
+        </div>
+        
+        <div class="alert-summary-card" style="background: linear-gradient(135deg, #feca57 0%, #ff9ff3 100%);">
+            <h3>Expiring Soon</h3>
+            <div class="number" id="expiring-soon-count">0</div>
+        </div>
+        
+        <div class="alert-summary-card" style="background: linear-gradient(135deg, #48dbfb 0%, #0abde3 100%);">
+            <h3>Low Stock</h3>
+            <div class="number" id="low-stock-count">0</div>
+        </div>
+        
+        <div class="alert-summary-card" style="background: linear-gradient(135deg, #ff9ff3 0%, #feca57 100%);">
+            <h3>Out of Stock</h3>
+            <div class="number" id="out-of-stock-count">0</div>
+        </div>
+    </div>
+</div>
+
+<div class="card">
+    <h2>Active Alerts</h2>
+    
+    <div class="tabs">
+        <button class="tab active" onclick="switchTab('all')">All Alerts</button>
+        <button class="tab" onclick="switchTab('critical')">Critical</button>
+        <button class="tab" onclick="switchTab('warning')">Warnings</button>
+    </div>
+    
+    <div id="all-alerts" class="tab-content active">
+        <table>
+            <thead>
+                <tr>
+                    <th>Sample ID</th>
+                    <th>Name</th>
+                    <th>Type</th>
+                    <th>Quantity</th>
+                    <th>Location</th>
+                    <th>Alerts</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody id="all-alerts-tbody">
+                <tr>
+                    <td colspan="7" style="text-align: center;">Loading alerts...</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+    
+    <div id="critical-alerts" class="tab-content">
+        <table>
+            <thead>
+                <tr>
+                    <th>Sample ID</th>
+                    <th>Name</th>
+                    <th>Type</th>
+                    <th>Quantity</th>
+                    <th>Location</th>
+                    <th>Alerts</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody id="critical-alerts-tbody">
+                <tr>
+                    <td colspan="7" style="text-align: center;">Loading critical alerts...</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+    
+    <div id="warning-alerts" class="tab-content">
+        <table>
+            <thead>
+                <tr>
+                    <th>Sample ID</th>
+                    <th>Name</th>
+                    <th>Type</th>
+                    <th>Quantity</th>
+                    <th>Location</th>
+                    <th>Alerts</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody id="warning-alerts-tbody">
+                <tr>
+                    <td colspan="7" style="text-align: center;">Loading warning alerts...</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    let alertsData = null;
+    
+    function switchTab(tabName) {
+        // Update tab buttons
+        document.querySelectorAll('.tab').forEach(tab => {
+            tab.classList.remove('active');
+        });
+        event.target.classList.add('active');
+        
+        // Update tab content
+        document.querySelectorAll('.tab-content').forEach(content => {
+            content.classList.remove('active');
+        });
+        document.getElementById(tabName + '-alerts').classList.add('active');
+    }
+    
+    function renderAlertRow(sample, severity) {
+        const alertsHtml = sample.alerts.map(alert => {
+            const badgeClass = alert.severity === 'critical' ? 'critical' : 'warning';
+            const icon = alert.severity === 'critical' ? '🔴' : '⚠️';
+            return `<div class="alert-message">${icon} ${alert.message}</div>`;
+        }).join('');
+        
+        return `
+            <tr class="sample-row ${severity}">
+                <td><strong>${sample.sample_id}</strong></td>
+                <td>${sample.name}</td>
+                <td>${sample.sample_type}</td>
+                <td>${sample.quantity} ${sample.unit}</td>
+                <td>${sample.storage_location || 'Unassigned'}</td>
+                <td>${alertsHtml}</td>
+                <td>
+                    <a href="/admin/samples/sample/${sample.id}/change/" style="color: #2c3e50; text-decoration: none;">View</a>
+                </td>
+            </tr>
+        `;
+    }
+    
+    function loadAlerts() {
+        fetch('/api/samples/alerts/', { credentials: 'same-origin' })
+            .then(response => response.json())
+            .then(data => {
+                alertsData = data;
+                
+                // Update summary cards
+                document.getElementById('total-alerts').textContent = data.summary.total_alerts;
+                document.getElementById('expired-count').textContent = data.summary.expired;
+                document.getElementById('expiring-soon-count').textContent = data.summary.expiring_soon;
+                document.getElementById('low-stock-count').textContent = data.summary.low_quantity;
+                document.getElementById('out-of-stock-count').textContent = data.summary.out_of_stock;
+                
+                // Render all alerts
+                const allAlertsBody = document.getElementById('all-alerts-tbody');
+                const criticalAlertsBody = document.getElementById('critical-alerts-tbody');
+                const warningAlertsBody = document.getElementById('warning-alerts-tbody');
+                
+                if (data.summary.total_alerts === 0) {
+                    const noAlertsHtml = `
+                        <tr>
+                            <td colspan="7">
+                                <div class="no-alerts">
+                                    <div class="no-alerts-icon">✓</div>
+                                    <h3>No Active Alerts</h3>
+                                    <p>All samples are within acceptable parameters</p>
+                                </div>
+                            </td>
+                        </tr>
+                    `;
+                    allAlertsBody.innerHTML = noAlertsHtml;
+                    criticalAlertsBody.innerHTML = noAlertsHtml;
+                    warningAlertsBody.innerHTML = noAlertsHtml;
+                    return;
+                }
+                
+                // All alerts tab
+                let allAlertsHtml = '';
+                data.critical.forEach(sample => {
+                    allAlertsHtml += renderAlertRow(sample, 'critical');
+                });
+                data.warning.forEach(sample => {
+                    allAlertsHtml += renderAlertRow(sample, 'warning');
+                });
+                allAlertsBody.innerHTML = allAlertsHtml || '<tr><td colspan="7" style="text-align: center;">No alerts found</td></tr>';
+                
+                // Critical alerts tab
+                let criticalHtml = '';
+                data.critical.forEach(sample => {
+                    criticalHtml += renderAlertRow(sample, 'critical');
+                });
+                criticalAlertsBody.innerHTML = criticalHtml || '<tr><td colspan="7" style="text-align: center;">No critical alerts</td></tr>';
+                
+                // Warning alerts tab
+                let warningHtml = '';
+                data.warning.forEach(sample => {
+                    warningHtml += renderAlertRow(sample, 'warning');
+                });
+                warningAlertsBody.innerHTML = warningHtml || '<tr><td colspan="7" style="text-align: center;">No warning alerts</td></tr>';
+            })
+            .catch(error => {
+                console.error('Error loading alerts:', error);
+                document.getElementById('all-alerts-tbody').innerHTML = '<tr><td colspan="7" style="text-align: center; color: red;">Error loading alerts</td></tr>';
+            });
+    }
+    
+    // Load alerts when page loads
+    loadAlerts();
+    
+    // Refresh alerts every 60 seconds
+    setInterval(loadAlerts, 60000);
+</script>
+{% endblock %}
