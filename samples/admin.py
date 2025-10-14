@@ -19,25 +19,35 @@ class QuantityLogInline(admin.TabularInline):
 
 @admin.register(Sample)
 class SampleAdmin(admin.ModelAdmin):
-    list_display = ('sample_id', 'name', 'sample_type', 'created_by', 'storage_location', 
-                    'quantity', 'unit', 'alert_status_display', 'barcode_preview', 'created_at')
-    list_filter = ('sample_type', 'storage_location', 'created_at', 'expiration_date')
+    list_display = ('sample_id', 'name', 'sample_type', 'parent_link', 'children_count', 
+                    'created_by', 'storage_location', 'quantity', 'unit', 
+                    'alert_status_display', 'barcode_preview', 'created_at')
+    list_filter = ('sample_type', 'storage_location', 'relationship_type', 'created_at', 'expiration_date')
     search_fields = ('sample_id', 'name', 'sample_type')
     inlines = [QuantityLogInline]
+    
+    # Add autocomplete for parent_sample field
+    autocomplete_fields = ['parent_sample']
     
     def get_readonly_fields(self, request, obj=None):
         """Only show alert_status_display when editing existing objects"""
         if obj:  # Editing an existing object
-            return ('id', 'sample_id', 'created_at', 'updated_at', 'barcode_preview', 'alert_status_display')
+            return ('id', 'sample_id', 'created_at', 'updated_at', 'barcode_preview', 
+                    'alert_status_display', 'lineage_display', 'children_display')
         else:  # Creating a new object
             return ('id', 'sample_id', 'created_at', 'updated_at', 'barcode_preview')
     
     def get_fieldsets(self, request, obj=None):
-        """Only show alert status for existing objects"""
+        """Only show alert status and relationships for existing objects"""
         if obj:  # Editing an existing object
             return (
                 ('Basic Information', {
                     'fields': ('sample_id', 'name', 'sample_type', 'created_by')
+                }),
+                ('Parent-Child Relationships', {
+                    'fields': ('parent_sample', 'relationship_type', 'derivation_notes', 
+                              'lineage_display', 'children_display'),
+                    'classes': ('wide',)
                 }),
                 ('Quantity & Storage', {
                     'fields': ('quantity', 'unit', 'min_quantity', 'storage_location')
@@ -55,6 +65,10 @@ class SampleAdmin(admin.ModelAdmin):
                 ('Basic Information', {
                     'fields': ('name', 'sample_type', 'created_by')
                 }),
+                ('Parent-Child Relationships', {
+                    'fields': ('parent_sample', 'relationship_type', 'derivation_notes'),
+                    'classes': ('wide',)
+                }),
                 ('Quantity & Storage', {
                     'fields': ('quantity', 'unit', 'min_quantity', 'storage_location')
                 }),
@@ -62,6 +76,81 @@ class SampleAdmin(admin.ModelAdmin):
                     'fields': ('expiration_date',)
                 }),
             )
+    
+    def parent_link(self, obj):
+        """Display clickable link to parent sample"""
+        if obj.parent_sample:
+            url = f'/admin/samples/sample/{obj.parent_sample.id}/change/'
+            return format_html(
+                '<a href="{}" style="color: #447e9b; font-weight: bold;">📦 {}</a>',
+                url,
+                obj.parent_sample.sample_id
+            )
+        return format_html('<span style="color: #999;">—</span>')
+    parent_link.short_description = "Parent Sample"
+    
+    def children_count(self, obj):
+        """Display count of child samples with link"""
+        count = obj.child_samples.count()
+        if count > 0:
+            return format_html(
+                '<span style="background: #e3f2fd; padding: 3px 8px; border-radius: 12px; '
+                'font-weight: bold; color: #1976d2;">👶 {}</span>',
+                count
+            )
+        return format_html('<span style="color: #999;">0</span>')
+    children_count.short_description = "Children"
+    
+    def lineage_display(self, obj):
+        """Display complete ancestry chain"""
+        if not obj:
+            return "Save to see lineage"
+        
+        lineage = obj.get_lineage()
+        if len(lineage) == 1:
+            return format_html('<span style="color: #999;">No parent (root sample)</span>')
+        
+        lineage_html = []
+        for i, sample in enumerate(lineage):
+            if i < len(lineage) - 1:  # Not the current sample
+                url = f'/admin/samples/sample/{sample.id}/change/'
+                lineage_html.append(
+                    f'<a href="{url}" style="color: #447e9b; text-decoration: none;">'
+                    f'{sample.sample_id}</a>'
+                )
+            else:  # Current sample
+                lineage_html.append(f'<strong>{sample.sample_id}</strong>')
+        
+        arrow = ' <span style="color: #999;">→</span> '
+        return format_html(arrow.join(lineage_html))
+    
+    lineage_display.short_description = "Lineage (Root → Current)"
+    
+    def children_display(self, obj):
+        """Display all child samples"""
+        if not obj:
+            return "Save to see children"
+        
+        children = obj.child_samples.all()
+        if not children:
+            return format_html('<span style="color: #999;">No child samples</span>')
+        
+        children_html = []
+        for child in children:
+            url = f'/admin/samples/sample/{child.id}/change/'
+            rel_type = dict(Sample._meta.get_field('relationship_type').choices).get(
+                child.relationship_type, 'Unknown'
+            )
+            children_html.append(
+                f'<li><a href="{url}" style="color: #447e9b; text-decoration: none;">'
+                f'{child.sample_id}</a> - {child.name} '
+                f'<span style="color: #666; font-size: 0.9em;">({rel_type})</span></li>'
+            )
+        
+        return format_html('<ul style="margin: 0; padding-left: 20px;">{}</ul>', 
+                          ''.join(children_html))
+    
+    children_display.short_description = "Child Samples"
     
     def barcode_preview(self, obj):
         if obj and obj.sample_id:
