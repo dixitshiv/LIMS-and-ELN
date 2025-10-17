@@ -1,0 +1,421 @@
+{% extends 'dashboard/base.html' %}
+
+{% block title %}Sample Lineage - LIMS{% endblock %}
+
+{% block extra_css %}
+<style>
+    .search-section {
+        margin-bottom: 2rem;
+    }
+    
+    .search-box {
+        display: flex;
+        gap: 1rem;
+        align-items: center;
+    }
+    
+    .search-box input {
+        flex: 1;
+        padding: 0.75rem;
+        border: 2px solid #e0e0e0;
+        border-radius: 8px;
+        font-size: 1rem;
+    }
+    
+    .search-box button {
+        padding: 0.75rem 1.5rem;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        border: none;
+        border-radius: 8px;
+        cursor: pointer;
+        font-weight: 600;
+        transition: transform 0.2s;
+    }
+    
+    .search-box button:hover {
+        transform: translateY(-2px);
+    }
+    
+    .lineage-container {
+        margin-top: 2rem;
+    }
+    
+    .lineage-tree {
+        display: flex;
+        flex-direction: column;
+        gap: 1rem;
+        padding: 1rem;
+        background: #f8f9fa;
+        border-radius: 12px;
+    }
+    
+    .lineage-level {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+    }
+    
+    .lineage-arrow {
+        font-size: 1.5rem;
+        color: #667eea;
+        font-weight: bold;
+    }
+    
+    .sample-node {
+        flex: 1;
+        padding: 1rem;
+        background: white;
+        border-radius: 8px;
+        border-left: 4px solid #667eea;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        transition: all 0.3s;
+    }
+    
+    .sample-node:hover {
+        transform: translateX(5px);
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    }
+    
+    .sample-node.current {
+        border-left-color: #43e97b;
+        background: linear-gradient(to right, #f0fff4, white);
+    }
+    
+    .sample-node.root {
+        border-left-color: #f093fb;
+    }
+    
+    .sample-id {
+        font-size: 1.25rem;
+        font-weight: bold;
+        color: #2c3e50;
+        margin-bottom: 0.5rem;
+    }
+    
+    .sample-name {
+        font-size: 1rem;
+        color: #555;
+        margin-bottom: 0.25rem;
+    }
+    
+    .sample-type {
+        display: inline-block;
+        padding: 0.25rem 0.75rem;
+        background: #e3f2fd;
+        color: #1976d2;
+        border-radius: 12px;
+        font-size: 0.85rem;
+        font-weight: 600;
+    }
+    
+    .relationship-badge {
+        display: inline-block;
+        padding: 0.25rem 0.75rem;
+        background: #fff3e0;
+        color: #f57c00;
+        border-radius: 12px;
+        font-size: 0.85rem;
+        font-weight: 600;
+        margin-left: 0.5rem;
+    }
+    
+    .children-section {
+        margin-top: 2rem;
+    }
+    
+    .children-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+        gap: 1rem;
+        margin-top: 1rem;
+    }
+    
+    .child-card {
+        padding: 1rem;
+        background: white;
+        border-radius: 8px;
+        border-left: 4px solid #4facfe;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        transition: all 0.3s;
+    }
+    
+    .child-card:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    }
+    
+    .no-data {
+        text-align: center;
+        padding: 3rem;
+        color: #999;
+    }
+    
+    .stats-mini {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+        gap: 1rem;
+        margin-bottom: 2rem;
+    }
+    
+    .stat-mini {
+        padding: 1rem;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        border-radius: 8px;
+        text-align: center;
+    }
+    
+    .stat-mini .label {
+        font-size: 0.85rem;
+        opacity: 0.9;
+        margin-bottom: 0.5rem;
+    }
+    
+    .stat-mini .value {
+        font-size: 1.75rem;
+        font-weight: bold;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="card">
+    <h2>Sample Lineage Tracker</h2>
+    
+    <div class="search-section">
+        <div class="search-box">
+            <input type="text" id="sample-search" placeholder="Enter Sample ID (e.g., SAMP-2025-001)">
+            <button onclick="searchLineage()">🔍 Search Lineage</button>
+        </div>
+    </div>
+    
+    <div id="stats-container" style="display: none;">
+        <div class="stats-mini">
+            <div class="stat-mini" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);">
+                <div class="label">Lineage Depth</div>
+                <div class="value" id="lineage-depth">0</div>
+            </div>
+            <div class="stat-mini" style="background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);">
+                <div class="label">Direct Children</div>
+                <div class="value" id="children-count">0</div>
+            </div>
+            <div class="stat-mini" style="background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);">
+                <div class="label">Total Descendants</div>
+                <div class="value" id="descendants-count">0</div>
+            </div>
+        </div>
+    </div>
+    
+    <div id="lineage-container" class="lineage-container" style="display: none;">
+        <h3>Ancestry Chain</h3>
+        <div id="lineage-tree" class="lineage-tree"></div>
+    </div>
+    
+    <div id="children-container" class="children-section" style="display: none;">
+        <h3>Direct Children</h3>
+        <div id="children-grid" class="children-grid"></div>
+    </div>
+    
+    <div id="no-data" class="no-data">
+        <p>Enter a sample ID above to view its lineage and relationships</p>
+    </div>
+</div>
+
+<div class="card">
+    <h2>Root Samples (No Parent)</h2>
+    <table id="root-samples-table">
+        <thead>
+            <tr>
+                <th>Sample ID</th>
+                <th>Name</th>
+                <th>Type</th>
+                <th>Children</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody id="root-samples-tbody">
+            <tr>
+                <td colspan="5" style="text-align: center;">Loading root samples...</td>
+            </tr>
+        </tbody>
+    </table>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    let currentSampleId = null;
+    
+    function searchLineage() {
+        const sampleId = document.getElementById('sample-search').value.trim();
+        if (!sampleId) {
+            alert('Please enter a sample ID');
+            return;
+        }
+        
+        // Find sample by sample_id
+        fetch(`/api/samples/?search=${sampleId}`, { credentials: 'same-origin' })
+            .then(response => response.json())
+            .then(data => {
+                if (data.results && data.results.length > 0) {
+                    const sample = data.results[0];
+                    loadSampleLineage(sample.id);
+                } else {
+                    alert('Sample not found');
+                }
+            })
+            .catch(error => {
+                console.error('Error searching sample:', error);
+                alert('Error searching for sample');
+            });
+    }
+    
+    function loadSampleLineage(sampleUUID) {
+        currentSampleId = sampleUUID;
+        
+        // Load lineage, children, and descendants in parallel
+        Promise.all([
+            fetch(`/api/samples/${sampleUUID}/lineage/`, { credentials: 'same-origin' }).then(r => r.json()),
+            fetch(`/api/samples/${sampleUUID}/children/`, { credentials: 'same-origin' }).then(r => r.json()),
+            fetch(`/api/samples/${sampleUUID}/descendants/`, { credentials: 'same-origin' }).then(r => r.json())
+        ])
+        .then(([lineageData, childrenData, descendantsData]) => {
+            // Update stats
+            document.getElementById('lineage-depth').textContent = lineageData.depth;
+            document.getElementById('children-count').textContent = childrenData.children_count;
+            document.getElementById('descendants-count').textContent = descendantsData.descendants_count;
+            
+            // Show containers
+            document.getElementById('stats-container').style.display = 'block';
+            document.getElementById('lineage-container').style.display = 'block';
+            document.getElementById('no-data').style.display = 'none';
+            
+            // Render lineage tree
+            renderLineageTree(lineageData.lineage, lineageData.sample_id);
+            
+            // Render children
+            if (childrenData.children_count > 0) {
+                document.getElementById('children-container').style.display = 'block';
+                renderChildren(childrenData.children);
+            } else {
+                document.getElementById('children-container').style.display = 'none';
+            }
+        })
+        .catch(error => {
+            console.error('Error loading lineage:', error);
+            alert('Error loading sample lineage');
+        });
+    }
+    
+    function renderLineageTree(lineage, currentSampleId) {
+        const tree = document.getElementById('lineage-tree');
+        tree.innerHTML = '';
+        
+        lineage.forEach((sample, index) => {
+            const level = document.createElement('div');
+            level.className = 'lineage-level';
+            
+            if (index > 0) {
+                const arrow = document.createElement('div');
+                arrow.className = 'lineage-arrow';
+                arrow.textContent = '↓';
+                tree.appendChild(arrow);
+            }
+            
+            const node = document.createElement('div');
+            node.className = 'sample-node';
+            
+            if (sample.sample_id === currentSampleId) {
+                node.classList.add('current');
+            } else if (index === 0) {
+                node.classList.add('root');
+            }
+            
+            let relationshipBadge = '';
+            if (sample.relationship_type) {
+                relationshipBadge = `<span class="relationship-badge">${sample.relationship_type}</span>`;
+            }
+            
+            node.innerHTML = `
+                <div class="sample-id">${sample.sample_id} ${sample.sample_id === currentSampleId ? '← Current' : ''}</div>
+                <div class="sample-name">${sample.name}</div>
+                <span class="sample-type">${sample.sample_type}</span>
+                ${relationshipBadge}
+            `;
+            
+            level.appendChild(node);
+            tree.appendChild(level);
+        });
+    }
+    
+    function renderChildren(children) {
+        const grid = document.getElementById('children-grid');
+        grid.innerHTML = '';
+        
+        children.forEach(child => {
+            const card = document.createElement('div');
+            card.className = 'child-card';
+            card.innerHTML = `
+                <div class="sample-id">${child.sample_id}</div>
+                <div class="sample-name">${child.name}</div>
+                <span class="sample-type">${child.sample_type}</span>
+                <span class="relationship-badge">${child.relationship_type || 'N/A'}</span>
+                <div style="margin-top: 0.5rem; font-size: 0.9rem; color: #666;">
+                    ${child.quantity} ${child.unit}
+                </div>
+                <button onclick="loadSampleLineage('${child.id}')" 
+                        style="margin-top: 0.75rem; padding: 0.5rem 1rem; background: #667eea; 
+                               color: white; border: none; border-radius: 6px; cursor: pointer;">
+                    View Lineage
+                </button>
+            `;
+            grid.appendChild(card);
+        });
+    }
+    
+    function loadRootSamples() {
+        fetch('/api/samples/root_samples/', { credentials: 'same-origin' })
+            .then(response => response.json())
+            .then(data => {
+                const tbody = document.getElementById('root-samples-tbody');
+                tbody.innerHTML = '';
+                
+                if (data.samples && data.samples.length > 0) {
+                    data.samples.forEach(sample => {
+                        const row = tbody.insertRow();
+                        row.insertCell(0).textContent = sample.sample_id;
+                        row.insertCell(1).textContent = sample.name;
+                        row.insertCell(2).textContent = sample.sample_type;
+                        row.insertCell(3).textContent = sample.children_count || 0;
+                        
+                        const actionsCell = row.insertCell(4);
+                        actionsCell.innerHTML = `
+                            <button onclick="loadSampleLineage('${sample.id}')" 
+                                    style="padding: 0.5rem 1rem; background: #667eea; color: white; 
+                                           border: none; border-radius: 6px; cursor: pointer;">
+                                View Lineage
+                            </button>
+                        `;
+                    });
+                } else {
+                    tbody.innerHTML = '<tr><td colspan="5" style="text-align: center;">No root samples found</td></tr>';
+                }
+            })
+            .catch(error => {
+                console.error('Error loading root samples:', error);
+            });
+    }
+    
+    // Load root samples on page load
+    loadRootSamples();
+    
+    // Allow Enter key to search
+    document.getElementById('sample-search').addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') {
+            searchLineage();
+        }
+    });
+</script>
+{% endblock %}
+</content>

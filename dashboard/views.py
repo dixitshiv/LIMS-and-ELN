@@ -157,3 +157,8 @@ def dashboard_storage(request):
 def dashboard_alerts(request):
     """Render the alerts page"""
     return render(request, 'dashboard/alerts.html')
+
+@login_required
+def dashboard_lineage(request):
+    """Render the sample lineage page"""
+    return render(request, 'dashboard/lineage.html')
