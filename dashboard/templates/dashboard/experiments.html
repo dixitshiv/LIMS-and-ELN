@@ -1,0 +1,302 @@
+{% extends 'dashboard/base.html' %}
+
+{% block title %}Experiments - LIMS{% endblock %}
+
+{% block extra_css %}
+<style>
+    .experiment-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+        gap: 1.5rem;
+        margin-top: 1.5rem;
+    }
+    
+    .experiment-card {
+        background: white;
+        border-radius: 12px;
+        padding: 1.5rem;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        transition: all 0.3s;
+        border-left: 4px solid #667eea;
+    }
+    
+    .experiment-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 4px 16px rgba(0,0,0,0.15);
+    }
+    
+    .experiment-title {
+        font-size: 1.25rem;
+        font-weight: bold;
+        color: #2c3e50;
+        margin-bottom: 0.5rem;
+    }
+    
+    .experiment-description {
+        color: #666;
+        font-size: 0.95rem;
+        margin-bottom: 1rem;
+        line-height: 1.5;
+        display: -webkit-box;
+        -webkit-line-clamp: 3;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+    }
+    
+    .experiment-meta {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.75rem;
+        margin-bottom: 1rem;
+    }
+    
+    .meta-badge {
+        display: inline-flex;
+        align-items: center;
+        padding: 0.35rem 0.75rem;
+        border-radius: 12px;
+        font-size: 0.85rem;
+        font-weight: 600;
+    }
+    
+    .status-badge {
+        background: #e3f2fd;
+        color: #1976d2;
+    }
+    
+    .status-badge.COMPLETED {
+        background: #e8f5e9;
+        color: #2e7d32;
+    }
+    
+    .status-badge.IN_PROGRESS {
+        background: #fff3e0;
+        color: #f57c00;
+    }
+    
+    .status-badge.PLANNING {
+        background: #f3e5f5;
+        color: #7b1fa2;
+    }
+    
+    .status-badge.ON_HOLD {
+        background: #fff9c4;
+        color: #f57f17;
+    }
+    
+    .status-badge.CANCELLED {
+        background: #ffebee;
+        color: #c62828;
+    }
+    
+    .samples-badge {
+        background: #e1f5fe;
+        color: #0277bd;
+    }
+    
+    .files-badge {
+        background: #fce4ec;
+        color: #c2185b;
+    }
+    
+    .experiment-footer {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding-top: 1rem;
+        border-top: 1px solid #e0e0e0;
+    }
+    
+    .experiment-author {
+        font-size: 0.85rem;
+        color: #999;
+    }
+    
+    .experiment-date {
+        font-size: 0.85rem;
+        color: #999;
+    }
+    
+    .view-button {
+        padding: 0.5rem 1rem;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        border: none;
+        border-radius: 6px;
+        cursor: pointer;
+        text-decoration: none;
+        font-weight: 600;
+        transition: transform 0.2s;
+    }
+    
+    .view-button:hover {
+        transform: translateY(-2px);
+    }
+    
+    .search-section {
+        display: flex;
+        gap: 1rem;
+        margin-bottom: 1.5rem;
+        flex-wrap: wrap;
+    }
+    
+    .search-input {
+        flex: 1;
+        min-width: 250px;
+        padding: 0.75rem;
+        border: 2px solid #e0e0e0;
+        border-radius: 8px;
+        font-size: 1rem;
+    }
+    
+    .filter-select {
+        padding: 0.75rem;
+        border: 2px solid #e0e0e0;
+        border-radius: 8px;
+        font-size: 1rem;
+        background: white;
+    }
+    
+    .add-button {
+        padding: 0.75rem 1.5rem;
+        background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);
+        color: white;
+        border: none;
+        border-radius: 8px;
+        cursor: pointer;
+        font-weight: 600;
+        text-decoration: none;
+        display: inline-block;
+    }
+    
+    .no-experiments {
+        text-align: center;
+        padding: 3rem;
+        color: #999;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+        <h2>Experiments</h2>
+        <a href="/admin/experiments/experiment/add/" class="add-button">+ New Experiment</a>
+    </div>
+    
+    <div class="search-section">
+        <input type="text" id="search-input" class="search-input" placeholder="Search experiments by title, description...">
+        <select id="status-filter" class="filter-select">
+            <option value="">All Status</option>
+            <option value="PLANNING">Planning</option>
+            <option value="IN_PROGRESS">In Progress</option>
+            <option value="COMPLETED">Completed</option>
+            <option value="ON_HOLD">On Hold</option>
+            <option value="CANCELLED">Cancelled</option>
+        </select>
+        <button onclick="filterExperiments()" class="view-button">Search</button>
+    </div>
+    
+    <div id="experiments-container">
+        <div class="experiment-grid" id="experiments-grid">
+            <div style="text-align: center; padding: 2rem; grid-column: 1/-1;">Loading experiments...</div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    let allExperiments = [];
+    
+    function loadExperiments() {
+        fetch('/api/experiments/', { credentials: 'same-origin' })
+            .then(response => response.json())
+            .then(data => {
+                allExperiments = data.results || [];
+                displayExperiments(allExperiments);
+            })
+            .catch(error => {
+                console.error('Error loading experiments:', error);
+                document.getElementById('experiments-grid').innerHTML = 
+                    '<div style="text-align: center; padding: 2rem; color: red; grid-column: 1/-1;">Error loading experiments</div>';
+            });
+    }
+    
+    function displayExperiments(experiments) {
+        const grid = document.getElementById('experiments-grid');
+        
+        if (experiments.length === 0) {
+            grid.innerHTML = `
+                <div class="no-experiments" style="grid-column: 1/-1;">
+                    <h3>No experiments found</h3>
+                    <p>Create your first experiment to get started!</p>
+                </div>
+            `;
+            return;
+        }
+        
+        grid.innerHTML = experiments.map(exp => {
+            const statusClass = exp.status || 'PLANNING';
+            const statusLabel = statusClass.replace('_', ' ');
+            const createdDate = new Date(exp.created_at).toLocaleDateString();
+            
+            return `
+                <div class="experiment-card">
+                    <div class="experiment-title">${exp.title}</div>
+                    <div class="experiment-description">${exp.description || 'No description'}</div>
+                    
+                    <div class="experiment-meta">
+                        <span class="meta-badge status-badge ${statusClass}">${statusLabel}</span>
+                        <span class="meta-badge samples-badge">📊 ${exp.sample_count || 0} samples</span>
+                        <span class="meta-badge files-badge">📎 ${exp.attachment_count || 0} files</span>
+                    </div>
+                    
+                    <div class="experiment-footer">
+                        <div>
+                            <div class="experiment-author">👤 ${exp.created_by_name || 'Unknown'}</div>
+                            <div class="experiment-date">📅 ${createdDate}</div>
+                        </div>
+                        <a href="/dashboard/experiments/${exp.id}/" class="view-button">View Details</a>
+                    </div>
+                </div>
+            `;
+        }).join('');
+    }
+    
+    function filterExperiments() {
+        const searchTerm = document.getElementById('search-input').value.toLowerCase();
+        const statusFilter = document.getElementById('status-filter').value;
+        
+        let filtered = allExperiments;
+        
+        // Apply search filter
+        if (searchTerm) {
+            filtered = filtered.filter(exp => 
+                exp.title.toLowerCase().includes(searchTerm) ||
+                (exp.description && exp.description.toLowerCase().includes(searchTerm))
+            );
+        }
+        
+        // Apply status filter
+        if (statusFilter) {
+            filtered = filtered.filter(exp => exp.status === statusFilter);
+        }
+        
+        displayExperiments(filtered);
+    }
+    
+    // Load experiments on page load
+    loadExperiments();
+    
+    // Allow Enter key to trigger search
+    document.getElementById('search-input').addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') {
+            filterExperiments();
+        }
+    });
+    
+    // Auto-filter on status change
+    document.getElementById('status-filter').addEventListener('change', filterExperiments);
+</script>
+{% endblock %}

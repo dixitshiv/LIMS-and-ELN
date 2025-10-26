@@ -162,3 +162,18 @@ def dashboard_alerts(request):
 def dashboard_lineage(request):
     """Render the sample lineage page"""
     return render(request, 'dashboard/lineage.html')
+
+@login_required
+def dashboard_experiments(request):
+    """Render the experiments overview page"""
+    return render(request, 'dashboard/experiments.html')
+
+@login_required
+def dashboard_experiment_detail(request, experiment_id):
+    """Render the experiment detail page"""
+    return render(request, 'dashboard/experiment_detail.html')
+
+@login_required
+def dashboard_experiment_upload(request, experiment_id):
+    """Render the file upload page for an experiment"""
+    return render(request, 'dashboard/experiment_files.html')
