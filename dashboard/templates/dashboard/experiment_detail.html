@@ -1,0 +1,426 @@
+{% extends 'dashboard/base.html' %}
+
+{% block title %}Experiment Detail - LIMS{% endblock %}
+
+{% block extra_css %}
+<style>
+    .detail-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: start;
+        margin-bottom: 2rem;
+        padding-bottom: 1.5rem;
+        border-bottom: 2px solid #e0e0e0;
+    }
+    
+    .detail-title {
+        flex: 1;
+    }
+    
+    .detail-title h1 {
+        font-size: 2rem;
+        color: #2c3e50;
+        margin-bottom: 0.5rem;
+    }
+    
+    .detail-meta {
+        display: flex;
+        gap: 1rem;
+        flex-wrap: wrap;
+        margin-top: 0.5rem;
+    }
+    
+    .meta-item {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        color: #666;
+        font-size: 0.95rem;
+    }
+    
+    .status-badge {
+        padding: 0.5rem 1rem;
+        border-radius: 20px;
+        font-weight: 600;
+        font-size: 0.9rem;
+    }
+    
+    .status-PLANNING { background: #f3e5f5; color: #7b1fa2; }
+    .status-IN_PROGRESS { background: #fff3e0; color: #f57c00; }
+    .status-COMPLETED { background: #e8f5e9; color: #2e7d32; }
+    .status-ON_HOLD { background: #fff9c4; color: #f57f17; }
+    .status-CANCELLED { background: #ffebee; color: #c62828; }
+    
+    .action-buttons {
+        display: flex;
+        gap: 0.75rem;
+    }
+    
+    .btn {
+        padding: 0.625rem 1.25rem;
+        border-radius: 8px;
+        border: none;
+        font-weight: 600;
+        cursor: pointer;
+        text-decoration: none;
+        display: inline-block;
+        transition: transform 0.2s;
+    }
+    
+    .btn:hover {
+        transform: translateY(-2px);
+    }
+    
+    .btn-primary {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+    }
+    
+    .btn-secondary {
+        background: #e0e0e0;
+        color: #333;
+    }
+    
+    .content-section {
+        margin-bottom: 2rem;
+    }
+    
+    .section-title {
+        font-size: 1.25rem;
+        font-weight: 600;
+        color: #2c3e50;
+        margin-bottom: 1rem;
+        padding-bottom: 0.5rem;
+        border-bottom: 2px solid #667eea;
+    }
+    
+    .rich-content {
+        background: #f8f9fa;
+        padding: 1.5rem;
+        border-radius: 8px;
+        line-height: 1.8;
+        color: #333;
+    }
+    
+    .rich-content:empty::before {
+        content: "No content provided";
+        color: #999;
+        font-style: italic;
+    }
+    
+    .samples-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+        gap: 1rem;
+        margin-top: 1rem;
+    }
+    
+    .sample-card {
+        background: white;
+        padding: 1rem;
+        border-radius: 8px;
+        border-left: 4px solid #4facfe;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    
+    .sample-id {
+        font-weight: bold;
+        color: #2c3e50;
+        margin-bottom: 0.25rem;
+    }
+    
+    .sample-name {
+        color: #666;
+        font-size: 0.9rem;
+    }
+    
+    .files-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+        gap: 1rem;
+        margin-top: 1rem;
+    }
+    
+    .file-card {
+        background: white;
+        padding: 1rem;
+        border-radius: 8px;
+        border: 2px solid #e0e0e0;
+        text-align: center;
+        transition: all 0.3s;
+    }
+    
+    .file-card:hover {
+        border-color: #667eea;
+        transform: translateY(-3px);
+        box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    }
+    
+    .file-icon {
+        font-size: 3rem;
+        margin-bottom: 0.5rem;
+    }
+    
+    .file-name {
+        font-weight: 600;
+        color: #2c3e50;
+        margin-bottom: 0.25rem;
+        word-break: break-word;
+    }
+    
+    .file-size {
+        color: #999;
+        font-size: 0.85rem;
+    }
+    
+    .download-btn {
+        margin-top: 0.75rem;
+        padding: 0.5rem 1rem;
+        background: #667eea;
+        color: white;
+        border: none;
+        border-radius: 6px;
+        cursor: pointer;
+        width: 100%;
+        font-weight: 600;
+    }
+    
+    .timeline-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 1rem;
+        margin-top: 1rem;
+    }
+    
+    .timeline-item {
+        background: #f8f9fa;
+        padding: 1rem;
+        border-radius: 8px;
+        border-left: 4px solid #667eea;
+    }
+    
+    .timeline-label {
+        font-size: 0.85rem;
+        color: #999;
+        margin-bottom: 0.25rem;
+    }
+    
+    .timeline-value {
+        font-weight: 600;
+        color: #2c3e50;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div class="detail-header">
+        <div class="detail-title">
+            <h1 id="exp-title">Loading...</h1>
+            <div class="detail-meta">
+                <div class="meta-item">
+                    <span>👤</span>
+                    <span id="exp-author">-</span>
+                </div>
+                <div class="meta-item">
+                    <span>📅 Created:</span>
+                    <span id="exp-created">-</span>
+                </div>
+                <div class="meta-item">
+                    <span>🔄 Updated:</span>
+                    <span id="exp-updated">-</span>
+                </div>
+            </div>
+        </div>
+        <div class="action-buttons">
+            <span id="exp-status" class="status-badge">-</span>
+            <a href="#" id="upload-link" class="btn btn-secondary">📤 Upload File</a>
+            <a href="#" id="edit-link" class="btn btn-primary">✏️ Edit</a>
+        </div>
+    </div>
+    
+    
+    <div class="content-section" id="description-section" style="display: none;">
+        <h3 class="section-title">Description</h3>
+        <div class="rich-content" id="exp-description"></div>
+    </div>
+    
+    <div class="content-section" id="objective-section" style="display: none;">
+        <h3 class="section-title">🎯 Objective</h3>
+        <div class="rich-content" id="exp-objective"></div>
+    </div>
+    
+    <div class="content-section" id="materials-section" style="display: none;">
+        <h3 class="section-title">🧪 Materials & Reagents</h3>
+        <div class="rich-content" id="exp-materials"></div>
+    </div>
+    
+    <div class="content-section" id="procedure-section" style="display: none;">
+        <h3 class="section-title">📋 Procedure</h3>
+        <div class="rich-content" id="exp-procedure"></div>
+    </div>
+    
+    <div class="content-section" id="results-section" style="display: none;">
+        <h3 class="section-title">📊 Results</h3>
+        <div class="rich-content" id="exp-results"></div>
+    </div>
+    
+    <div class="content-section" id="conclusion-section" style="display: none;">
+        <h3 class="section-title">💡 Conclusion</h3>
+        <div class="rich-content" id="exp-conclusion"></div>
+    </div>
+    
+    <div class="content-section" id="notes-section" style="display: none;">
+        <h3 class="section-title">📝 Notes</h3>
+        <div class="rich-content" id="exp-notes"></div>
+    </div>
+</div>
+
+<div class="card" id="timeline-section">
+    <h3 class="section-title">📅 Timeline</h3>
+    <div class="timeline-grid">
+        <div class="timeline-item">
+            <div class="timeline-label">Start Date</div>
+            <div class="timeline-value" id="exp-start-date">Not set</div>
+        </div>
+        <div class="timeline-item">
+            <div class="timeline-label">End Date</div>
+            <div class="timeline-value" id="exp-end-date">Not set</div>
+        </div>
+        <div class="timeline-item">
+            <div class="timeline-label">Duration</div>
+            <div class="timeline-value" id="exp-duration">-</div>
+        </div>
+    </div>
+</div>
+
+<div class="card" id="samples-section">
+    <h3 class="section-title">🧬 Samples Used</h3>
+    <div class="samples-grid" id="samples-grid">
+        <p style="color: #999;">No samples linked</p>
+    </div>
+</div>
+
+<div class="card" id="files-section">
+    <h3 class="section-title">📎 Attached Files</h3>
+    <div class="files-grid" id="files-grid">
+        <p style="color: #999;">No files attached</p>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    const experimentId = window.location.pathname.split('/').filter(p => p).pop();
+    
+    function loadExperiment() {
+        fetch(`/api/experiments/${experimentId}/`, { credentials: 'same-origin' })
+            .then(response => response.json())
+            .then(data => {
+                displayExperiment(data);
+            })
+            .catch(error => {
+                console.error('Error loading experiment:', error);
+                alert('Error loading experiment details');
+            });
+    }
+    
+    function displayExperiment(exp) {
+        // Header
+        document.getElementById('exp-title').textContent = exp.title;
+        document.getElementById('exp-author').textContent = exp.created_by_name || 'Unknown';
+        document.getElementById('exp-created').textContent = new Date(exp.created_at).toLocaleDateString();
+        document.getElementById('exp-updated').textContent = new Date(exp.updated_at).toLocaleDateString();
+        
+        // Status
+        const statusBadge = document.getElementById('exp-status');
+        statusBadge.textContent = (exp.status || 'PLANNING').replace('_', ' ');
+        statusBadge.className = `status-badge status-${exp.status || 'PLANNING'}`;
+        
+        // Edit link
+        document.getElementById('edit-link').href = `/admin/experiments/experiment/${exp.id}/change/`;
+
+        // Upload link (add this line)
+        document.getElementById('upload-link').href = `/dashboard/experiments/${exp.id}/upload/`;
+        
+        // Rich content sections
+        showSection('description', exp.description);
+        showSection('objective', exp.objective);
+        showSection('materials', exp.materials);
+        showSection('procedure', exp.procedure);
+        showSection('results', exp.results);
+        showSection('conclusion', exp.conclusion);
+        showSection('notes', exp.notes);
+        
+        // Timeline
+        if (exp.start_date) {
+            document.getElementById('exp-start-date').textContent = new Date(exp.start_date).toLocaleDateString();
+        }
+        if (exp.end_date) {
+            document.getElementById('exp-end-date').textContent = new Date(exp.end_date).toLocaleDateString();
+        }
+        if (exp.start_date && exp.end_date) {
+            const start = new Date(exp.start_date);
+            const end = new Date(exp.end_date);
+            const days = Math.ceil((end - start) / (1000 * 60 * 60 * 24));
+            document.getElementById('exp-duration').textContent = `${days} days`;
+        }
+        
+        // Samples
+        if (exp.samples && exp.samples.length > 0) {
+            const samplesGrid = document.getElementById('samples-grid');
+            samplesGrid.innerHTML = exp.samples.map(sample => `
+                <div class="sample-card">
+                    <div class="sample-id">${sample.sample_id}</div>
+                    <div class="sample-name">${sample.name}</div>
+                    <div class="sample-name" style="font-size: 0.85rem; color: #999;">${sample.sample_type}</div>
+                </div>
+            `).join('');
+        }
+        
+        // Files
+        if (exp.attachments && exp.attachments.length > 0) {
+            const filesGrid = document.getElementById('files-grid');
+            filesGrid.innerHTML = exp.attachments.map(file => {
+                const icon = getFileIcon(file.file_type);
+                return `
+                    <div class="file-card">
+                        <div class="file-icon">${icon}</div>
+                        <div class="file-name">${file.file_name}</div>
+                        <div class="file-size">${file.file_size_display}</div>
+                        <button class="download-btn" onclick="downloadFile('${file.id}')">
+                            ⬇️ Download
+                        </button>
+                    </div>
+                `;
+            }).join('');
+        }
+    }
+    
+    function showSection(name, content) {
+        if (content && content.trim()) {
+            document.getElementById(`${name}-section`).style.display = 'block';
+            document.getElementById(`exp-${name}`).innerHTML = content;
+        }
+    }
+    
+    function getFileIcon(fileType) {
+        const icons = {
+            'IMAGE': '🖼️',
+            'PDF': '📄',
+            'EXCEL': '📊',
+            'WORD': '📝',
+            'DATA': '📈',
+            'OTHER': '📎'
+        };
+        return icons[fileType] || '📎';
+    }
+    
+    function downloadFile(fileId) {
+        window.location.href = `/api/experiments/download_file/?file_id=${fileId}`;
+    }
+    
+    // Load experiment on page load
+    loadExperiment();
+</script>
+{% endblock %}
