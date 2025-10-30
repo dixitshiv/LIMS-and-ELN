@@ -8,6 +8,7 @@ urlpatterns = [
     path('admin/', admin.site.urls),
     path('api/', include('samples.urls')),
     path('api/', include('experiments.urls')),
+    path('api/', include('protocols.urls')),
     path('api/dashboard/stats/', dashboard_views.dashboard_stats),
     path('api/dashboard/storage/', dashboard_views.storage_utilization),
     path('api/dashboard/activity/', dashboard_views.recent_activity),

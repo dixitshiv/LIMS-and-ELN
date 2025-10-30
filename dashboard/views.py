@@ -177,3 +177,13 @@ def dashboard_experiment_detail(request, experiment_id):
 def dashboard_experiment_upload(request, experiment_id):
     """Render the file upload page for an experiment"""
     return render(request, 'dashboard/experiment_files.html')
+
+@login_required
+def dashboard_protocols(request):
+    """Render the protocols library page"""
+    return render(request, 'dashboard/protocols.html')
+
+@login_required
+def dashboard_protocol_detail(request, protocol_id):
+    """Render the protocol detail page"""
+    return render(request, 'dashboard/protocol_detail.html')

@@ -45,6 +45,7 @@ INSTALLED_APPS = [
     'samples',
     'experiments',
     'dashboard',
+     'protocols',
 ]
 
 MIDDLEWARE = [

@@ -1,0 +1,401 @@
+{% extends 'dashboard/base.html' %}
+
+{% block title %}Protocol Detail - LIMS{% endblock %}
+
+{% block extra_css %}
+<style>
+    .detail-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: start;
+        margin-bottom: 2rem;
+        padding-bottom: 1.5rem;
+        border-bottom: 2px solid #e0e0e0;
+    }
+    
+    .detail-title {
+        flex: 1;
+    }
+    
+    .detail-title h1 {
+        font-size: 2rem;
+        color: #2c3e50;
+        margin-bottom: 0.5rem;
+    }
+    
+    .protocol-code-display {
+        font-size: 1.1rem;
+        color: #667eea;
+        font-weight: bold;
+        margin-bottom: 0.5rem;
+    }
+    
+    .detail-meta {
+        display: flex;
+        gap: 1rem;
+        flex-wrap: wrap;
+        margin-top: 0.5rem;
+    }
+    
+    .meta-item {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        color: #666;
+        font-size: 0.95rem;
+    }
+    
+    .status-badge {
+        padding: 0.5rem 1rem;
+        border-radius: 20px;
+        font-weight: 600;
+        font-size: 0.9rem;
+    }
+    
+    .status-DRAFT { background: #fff3e0; color: #f57c00; }
+    .status-REVIEW { background: #e1f5fe; color: #0277bd; }
+    .status-APPROVED { background: #e8f5e9; color: #2e7d32; }
+    .status-ARCHIVED { background: #f5f5f5; color: #616161; }
+    
+    .action-buttons {
+        display: flex;
+        gap: 0.75rem;
+        flex-wrap: wrap;
+    }
+    
+    .btn {
+        padding: 0.625rem 1.25rem;
+        border-radius: 8px;
+        border: none;
+        font-weight: 600;
+        cursor: pointer;
+        text-decoration: none;
+        display: inline-block;
+        transition: transform 0.2s;
+    }
+    
+    .btn:hover {
+        transform: translateY(-2px);
+    }
+    
+    .btn-primary {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+    }
+    
+    .btn-secondary {
+        background: #e0e0e0;
+        color: #333;
+    }
+    
+    .btn-success {
+        background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);
+        color: white;
+    }
+    
+    .content-section {
+        margin-bottom: 2rem;
+    }
+    
+    .section-title {
+        font-size: 1.25rem;
+        font-weight: 600;
+        color: #2c3e50;
+        margin-bottom: 1rem;
+        padding-bottom: 0.5rem;
+        border-bottom: 2px solid #667eea;
+    }
+    
+    .rich-content {
+        background: #f8f9fa;
+        padding: 1.5rem;
+        border-radius: 8px;
+        line-height: 1.8;
+        color: #333;
+    }
+    
+    .rich-content:empty::before {
+        content: "No content provided";
+        color: #999;
+        font-style: italic;
+    }
+    
+    .version-history {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+        gap: 1rem;
+        margin-top: 1rem;
+    }
+    
+    .version-card {
+        background: white;
+        padding: 1rem;
+        border-radius: 8px;
+        border-left: 4px solid #667eea;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        cursor: pointer;
+        transition: all 0.3s;
+    }
+    
+    .version-card:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    }
+    
+    .version-card.active {
+        border-left-color: #43e97b;
+        background: #f0fff4;
+    }
+    
+    .version-number {
+        font-size: 1.5rem;
+        font-weight: bold;
+        color: #2c3e50;
+        margin-bottom: 0.25rem;
+    }
+    
+    .version-status {
+        font-size: 0.85rem;
+        padding: 0.25rem 0.5rem;
+        border-radius: 8px;
+        display: inline-block;
+        margin-bottom: 0.5rem;
+    }
+    
+    .version-date {
+        font-size: 0.85rem;
+        color: #999;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div class="detail-header">
+        <div class="detail-title">
+            <div class="protocol-code-display" id="protocol-code">Loading...</div>
+            <h1 id="protocol-title">Loading...</h1>
+            <div class="detail-meta">
+                <div class="meta-item">
+                    <span>👤</span>
+                    <span id="protocol-author">-</span>
+                </div>
+                <div class="meta-item">
+                    <span>📅 Created:</span>
+                    <span id="protocol-created">-</span>
+                </div>
+                <div class="meta-item">
+                    <span>🔄 Updated:</span>
+                    <span id="protocol-updated">-</span>
+                </div>
+                <div class="meta-item">
+                    <span>📊 Used:</span>
+                    <span id="protocol-used">0</span>
+                    <span>times</span>
+                </div>
+            </div>
+        </div>
+        <div class="action-buttons">
+            <span id="protocol-status" class="status-badge">-</span>
+            <a href="#" id="edit-link" class="btn btn-primary">✏️ Edit</a>
+            <button onclick="createNewVersion()" class="btn btn-secondary">📋 New Version</button>
+            <button onclick="useInExperiment()" class="btn btn-success">🧪 Use in Experiment</button>
+        </div>
+    </div>
+    
+    <div class="content-section" id="description-section" style="display: none;">
+        <h3 class="section-title">Description</h3>
+        <div class="rich-content" id="protocol-description"></div>
+    </div>
+    
+    <div class="content-section" id="objective-section" style="display: none;">
+        <h3 class="section-title">🎯 Objective</h3>
+        <div class="rich-content" id="protocol-objective"></div>
+    </div>
+    
+    <div class="content-section" id="materials-section" style="display: none;">
+        <h3 class="section-title">🧪 Materials & Reagents</h3>
+        <div class="rich-content" id="protocol-materials"></div>
+    </div>
+    
+    <div class="content-section" id="procedure-section" style="display: none;">
+        <h3 class="section-title">📋 Procedure</h3>
+        <div class="rich-content" id="protocol-procedure"></div>
+    </div>
+    
+    <div class="content-section" id="safety-section" style="display: none;">
+        <h3 class="section-title">⚠️ Safety Notes</h3>
+        <div class="rich-content" id="protocol-safety"></div>
+    </div>
+    
+    <div class="content-section" id="troubleshooting-section" style="display: none;">
+        <h3 class="section-title">🔧 Troubleshooting</h3>
+        <div class="rich-content" id="protocol-troubleshooting"></div>
+    </div>
+    
+    <div class="content-section" id="references-section" style="display: none;">
+        <h3 class="section-title">📚 References</h3>
+        <div class="rich-content" id="protocol-references"></div>
+    </div>
+    
+    <div class="content-section" id="notes-section" style="display: none;">
+        <h3 class="section-title">📝 Notes</h3>
+        <div class="rich-content" id="protocol-notes"></div>
+    </div>
+</div>
+
+<div class="card" id="versions-section">
+    <h3 class="section-title">📜 Version History</h3>
+    <div class="version-history" id="version-history">
+        <p style="color: #999;">Loading versions...</p>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    const protocolId = window.location.pathname.split('/').filter(p => p).pop();
+    let currentProtocol = null;
+    
+    function loadProtocol() {
+        fetch(`/api/protocols/${protocolId}/`, { credentials: 'same-origin' })
+            .then(response => response.json())
+            .then(data => {
+                currentProtocol = data;
+                displayProtocol(data);
+                loadVersions();
+            })
+            .catch(error => {
+                console.error('Error loading protocol:', error);
+                alert('Error loading protocol details');
+            });
+    }
+    
+    function displayProtocol(protocol) {
+        // Header
+        document.getElementById('protocol-code').textContent = `${protocol.protocol_code} v${protocol.version}`;
+        document.getElementById('protocol-title').textContent = protocol.title;
+        document.getElementById('protocol-author').textContent = protocol.created_by_name || 'Unknown';
+        document.getElementById('protocol-created').textContent = new Date(protocol.created_at).toLocaleDateString();
+        document.getElementById('protocol-updated').textContent = new Date(protocol.updated_at).toLocaleDateString();
+        document.getElementById('protocol-used').textContent = protocol.times_used || 0;
+        
+        // Status
+        const statusBadge = document.getElementById('protocol-status');
+        statusBadge.textContent = (protocol.status || 'DRAFT').replace('_', ' ');
+        statusBadge.className = `status-badge status-${protocol.status || 'DRAFT'}`;
+        
+        // Edit link
+        document.getElementById('edit-link').href = `/admin/protocols/protocol/${protocol.id}/change/`;
+        
+        // Rich content sections
+        showSection('description', protocol.description);
+        showSection('objective', protocol.objective);
+        showSection('materials', protocol.materials);
+        showSection('procedure', protocol.procedure);
+        showSection('safety', protocol.safety_notes);
+        showSection('troubleshooting', protocol.troubleshooting);
+        showSection('references', protocol.references);
+        showSection('notes', protocol.notes);
+    }
+    
+    function showSection(name, content) {
+        if (content && content.trim()) {
+            document.getElementById(`${name}-section`).style.display = 'block';
+            document.getElementById(`protocol-${name}`).innerHTML = content;
+        }
+    }
+    
+    function loadVersions() {
+        fetch(`/api/protocols/${protocolId}/versions/`, { credentials: 'same-origin' })
+            .then(response => response.json())
+            .then(data => {
+                displayVersions(data.versions);
+            })
+            .catch(error => {
+                console.error('Error loading versions:', error);
+            });
+    }
+    
+    function displayVersions(versions) {
+        const container = document.getElementById('version-history');
+        
+        if (versions.length === 0) {
+            container.innerHTML = '<p style="color: #999;">No version history</p>';
+            return;
+        }
+        
+        container.innerHTML = versions.map(version => {
+            const isActive = version.is_active ? 'active' : '';
+            const activeLabel = version.is_active ? '✓ Active' : '';
+            const statusColors = {
+                'DRAFT': '#fff3e0',
+                'REVIEW': '#e1f5fe',
+                'APPROVED': '#e8f5e9',
+                'ARCHIVED': '#f5f5f5'
+            };
+            
+            return `
+                <div class="version-card ${isActive}" onclick="window.location.href='/dashboard/protocols/${version.id}/'">
+                    <div class="version-number">v${version.version} ${activeLabel}</div>
+                    <div class="version-status" style="background: ${statusColors[version.status]};">
+                        ${version.status}
+                    </div>
+                    <div class="version-date">
+                        ${new Date(version.created_at).toLocaleDateString()}
+                    </div>
+                    <div class="version-date">
+                        by ${version.created_by_name}
+                    </div>
+                </div>
+            `;
+        }).join('');
+    }
+    
+    function createNewVersion() {
+        if (!confirm('Create a new version of this protocol? The current version will be marked as inactive.')) {
+            return;
+        }
+        
+        fetch(`/api/protocols/${protocolId}/create_version/`, {
+            method: 'POST',
+            credentials: 'same-origin',
+            headers: {
+                'X-CSRFToken': getCookie('csrftoken')
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            alert(data.message);
+            window.location.href = `/dashboard/protocols/${data.protocol.id}/`;
+        })
+        .catch(error => {
+            console.error('Error creating version:', error);
+            alert('Error creating new version');
+        });
+    }
+    
+    function useInExperiment() {
+        // This will be implemented later when we integrate with experiments
+        alert('This feature will allow you to create a new experiment using this protocol as a template. Coming soon!');
+    }
+    
+    function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    }
+    
+    // Load protocol on page load
+    loadProtocol();
+</script>
+{% endblock %}
