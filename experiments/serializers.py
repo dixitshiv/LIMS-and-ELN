@@ -13,6 +13,10 @@ class ExperimentSerializer(serializers.ModelSerializer):
     created_by_name = serializers.CharField(source='created_by.username', read_only=True)
     attachments = FileAttachmentSerializer(many=True, read_only=True)
     attachment_count = serializers.SerializerMethodField()
+
+    protocol_template_code = serializers.CharField(source='protocol_template.protocol_code', read_only=True)
+    protocol_template_title = serializers.CharField(source='protocol_template.title', read_only=True)
+    protocol_template_version = serializers.IntegerField(source='protocol_template.version', read_only=True)
     
     class Meta:
         model = Experiment
@@ -49,6 +53,10 @@ class ExperimentListSerializer(serializers.ModelSerializer):
     sample_count = serializers.SerializerMethodField()
     attachment_count = serializers.SerializerMethodField()
     
+    protocol_template_code = serializers.CharField(source='protocol_template.protocol_code', read_only=True)
+    protocol_template_title = serializers.CharField(source='protocol_template.title', read_only=True)
+    
+
     class Meta:
         model = Experiment
         fields = ['id', 'title', 'description', 'status', 'start_date', 'end_date', 

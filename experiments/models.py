@@ -3,6 +3,7 @@ from django.contrib.auth.models import User
 from samples.models import Sample
 from ckeditor.fields import RichTextField
 import uuid
+from protocols.models import Protocol
 
 class Experiment(models.Model):
     STATUS_CHOICES = [
@@ -16,6 +17,16 @@ class Experiment(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     title = models.CharField(max_length=200)
     description = models.TextField(blank=True)
+
+    # Link to protocol template
+    protocol_template = models.ForeignKey(
+        Protocol, 
+        on_delete=models.SET_NULL, 
+        null=True, 
+        blank=True,
+        related_name='experiments_using',
+        help_text="Protocol template used for this experiment"
+    )
     
     # Rich text fields for detailed documentation
     objective = RichTextField(blank=True, help_text="Experiment objectives and goals")
